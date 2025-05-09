@@ -1,0 +1,27 @@
+api 04/03/2025
+    GET http://localhost:3000/api/v1/degrees?status&end_date=2025-12-31&start_date=2020-01-01
+    GET http://localhost:3000/api/v1/degrees/1
+
+    POST http://localhost:3000/api/v1/auth/register (sửa lại có thể tạo các role khác nhau được và gửi mk về mail)
+
+        {
+        "username": "2001223043",
+        "email": "ngocnghia2004nn@gmail.com",
+        "citizen_id": "070204002393",
+        "common_name": "Nguyen Ngoc Nghia",
+        "organization": "Org1",
+        "organizational_unit": "IT",
+        "country": "US",
+        "state": "California",
+        "locality": "San Francisco",
+        "role": "student"
+        }
+
+api 05/03/2025
+    POST http://localhost:3000/api/v1/users/reset-password
+
+    {
+    "common_name": "Nguyen Ngoc Nghia",
+    "username": "2001223033",
+    "citizen_id": "070204002399"
+    }

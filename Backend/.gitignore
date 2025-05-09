@@ -1,0 +1,9 @@
+/fabricApi/node_modules
+
+/fabricApi/package_lock.json
+
+
+node_modules/
+yarn.lock
+
+.env
