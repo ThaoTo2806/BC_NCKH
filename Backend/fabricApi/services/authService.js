@@ -84,7 +84,32 @@ async function Login(username, password) {
         };
     }
 }
+async function LoginWithToken(token) {
+    try {
+        
+        const sql = `SELECT users.* FROM degrees INNER JOIN users ON degrees.user_id = users.id WHERE degrees.hash_qrcode = ?`;
+        const [rows] = await dbQuery(sql, [token]);
+    
+        if (!rows || rows.length === 0) {
+            return {code : "INVALID_CREDENTIALS",  success: false, message: "Mã token không hợp lệ" };
+        }
+        const user = rows;
+        if(!user.pin_code && user.role !== "admin" && user.role !== "manager"){
+            return { code : "PIN_REQUIRED", success: false, message: "Pin code yêu cầu" };
+        }
+        return {
+             code : "LOGIN_SUCCESS",
+            success: true,
+            message: "Đăng nhập thành công",
+            user,
+            token
+        };
+    } catch (error) {
+        console.error("Lỗi khi đăng nhập bằng token:", error);
+        return { success: false, message:error };
+    }
 
+}
 async function Register(req) {
     const {
         username,
@@ -282,4 +307,4 @@ async function Register(req) {
     }
 }
 
-module.exports = { Login, Register };
+module.exports = { Login, Register , LoginWithToken };

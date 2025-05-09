@@ -4,9 +4,18 @@ const DegreeService = require("../services/degreeService");
 const db = require("../config/connectToDB");
 const crypto = require("crypto");
 const Degree = require("../models/degree");
-
+const pool = require("../config/database_pool");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+// async function loadIPFS() {
+//     const { uploadToIPFS } = await import("../config/ipfs");
+//     return uploadToIPFS;
+// }
+
+// let uploadToIPFS;
+// loadIPFS().then((module) => (uploadToIPFS = module));
+const { uploadToIPFS } = require("../config/ipfs");
+
 exports.upload = upload.fields([
     { name: "frontImage", maxCount: 1 },
     { name: "backImage", maxCount: 1 },
@@ -18,18 +27,19 @@ function generateHash(data) {
 
 exports.getDegrees = async (req, res) => {
     try {
-        const { status, start_date, end_date } = req.query;
+        const { status, start_date, end_date ,date } = req.query;
         const data = await degreeService.getDegrees({
             status,
             start_date,
             end_date,
+            date
         });
         console.log(data);
         return res.status(200).json(data);
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }
-};
+};                
 
 exports.getDegreeDetail = async (req, res) => {
     try {
@@ -50,7 +60,11 @@ exports.getDegreeDetail = async (req, res) => {
 exports.createDegree = async (req, res) => {
     console.log("Request files:", req.files);
     console.log("Request body:", req.body);
+    const connection = await pool.getConnection();
+
     try {
+        await connection.beginTransaction();
+
         const {
             user_id,
             major_id,
@@ -61,14 +75,10 @@ exports.createDegree = async (req, res) => {
             gpa,
             verification_code,
         } = req.body;
-        // Lấy buffer của ảnh
+
         const frontImage = req.files?.frontImage?.[0]?.buffer;
         const backImage = req.files?.backImage?.[0]?.buffer;
 
-        console.log("Front image:", frontImage);
-        console.log("Back image:", backImage);
-
-        // Kiểm tra dữ liệu cơ bản
         if (!user_id || !degree_name) {
             return res.status(400).json({
                 success: false,
@@ -76,7 +86,6 @@ exports.createDegree = async (req, res) => {
             });
         }
 
-        // Kiểm tra ảnh
         if (!frontImage || !backImage) {
             return res.status(400).json({
                 success: false,
@@ -84,7 +93,6 @@ exports.createDegree = async (req, res) => {
             });
         }
 
-        // Gọi hàm lưu vào database
         const result = await simpleSaveWithImages(
             user_id,
             major_id || 1,
@@ -95,33 +103,57 @@ exports.createDegree = async (req, res) => {
             hash_qrcode,
             frontImage,
             backImage,
-            verification_code
+            verification_code,
+            connection
         );
+        const degreeId = result.insertId; // Lưu ID của bằng cấp
 
-        // Duyệt bằng cấp cấp 1
-        const approver = req.user;
-        const response = await DegreeService.approveDegreeLevel1(
-            result.insertId,
-            approver
-        );
+        await connection.commit();
 
-        // Trả kết quả thành công
-        res.status(201).json({
-            success: true,
-            message: "Tạo bằng cấp thành công",
-            degreeId: result.insertId,
-            verificationCode: result.verificationCode,
-            response: response,
-        });
+        try {
+            const approver = req.user;
+            const response = await DegreeService.approveDegreeLevel1(
+                degreeId,
+                approver,
+                connection
+            );
+
+            res.status(201).json({
+                success: true,
+                message: "Tạo bằng cấp thành công",
+                degreeId: degreeId,
+                verificationCode: result.verificationCode,
+                response: response,
+            });
+        } catch (blockchainError) {
+            console.error(
+                "Lỗi khi lưu vào blockchain, xóa bằng cấp:",
+                blockchainError
+            );
+
+            await connection.beginTransaction();
+            await connection.query("DELETE FROM degrees WHERE id = ?", [
+                degreeId,
+            ]);
+            await connection.commit();
+
+            res.status(500).json({
+                success: false,
+                message:
+                    "Lưu blockchain thất bại, bằng cấp đã bị xóa khỏi hệ thống",
+            });
+        }
     } catch (error) {
+        await connection.rollback();
         console.error("Lỗi khi tạo bằng cấp:", error);
         res.status(500).json({
             success: false,
             message: error.message || "Lỗi server",
         });
+    } finally {
+        connection.release();
     }
 };
-
 async function simpleSaveWithImages(
     user_id,
     major_id,
@@ -132,37 +164,38 @@ async function simpleSaveWithImages(
     hash_qrcode,
     frontImage,
     backImage,
-    verification_code = null
+    verification_code = null,
+    connection
 ) {
     console.log("<<< check image buffer >>>", frontImage, backImage);
 
-    // Tạo mã xác thực ngẫu nhiên nếu không có
     const finalVerificationCode =
         verification_code ||
         crypto.randomBytes(3).toString("hex").toUpperCase();
 
-    // Tạo hash đơn giản từ ảnh (nếu cần)
-    let imageHash = null;
-    if (frontImage && backImage) {
-        imageHash = crypto
-            .createHash("md5")
-            .update(Buffer.concat([frontImage, backImage]))
-            .digest("hex");
+    let frontCID, backCID;
+
+    try {
+        if (frontImage) frontCID = await uploadToIPFS(frontImage);
+        if (backImage) backCID = await uploadToIPFS(backImage);
+
+        console.log("Front Image CID:", frontCID);
+        console.log("Back Image CID:", backCID);
+    } catch (error) {
+        throw new Error("Lỗi khi tải ảnh lên IPFS: " + error.message);
     }
 
     const hash = generateHash(hash_qrcode);
-
-
 
     try {
         const sql = `
             INSERT INTO degrees 
             (user_id, major_id, degree_name, degree_type, graduation_year, gpa, hash_qrcode,
              degree_image_front, degree_image_back, blockchain_hash, verification_code, status) 
-            VALUES (?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, 'pending')
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
         `;
 
-        const results = await db.query(sql, [
+        const [results] = await connection.query(sql, [
             user_id,
             major_id,
             degree_name,
@@ -170,16 +203,16 @@ async function simpleSaveWithImages(
             graduation_year,
             gpa,
             hash,
-            frontImage,
-            backImage,
-            imageHash,
+            frontCID.cid,
+            backCID.cid,
+            hash_qrcode,
             finalVerificationCode,
         ]);
 
         return {
             insertId: results.insertId,
-            frontImageHash: frontImage,
-            backImageHash: backImage,
+            frontCID,
+            backCID,
             hash_qrcode: hash,
             verificationCode: finalVerificationCode,
         };
@@ -209,6 +242,28 @@ exports.UpdateDegree = async (req, res) => {
         return res.status(200).json(result);
     } catch (error) {
         console.error("Lỗi khi cập nhật bằng cấp:", error);
+        return res.status(500).json({ success: false, message: "Lỗi server" });
+    }
+};
+
+exports.UpdateDegreeQueryTime = async (req, res) => {
+    try {
+        const { timeQuery } = req.query;
+        const { id } = req.params;
+
+        const now = new Date();
+        now.setHours(now.getHours() + 7); // Add 7 hours for Vietnam timezone
+        const vietnamDateTime = now.toISOString().slice(0, 19).replace('T', ' ');
+        
+        const result = await DegreeService.UpdateDegreeQueryTime(vietnamDateTime, id);
+
+        if (!result.success) {
+            return res.status(404).json(result);
+        }
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("Lỗi khi cập nhật bằng cấp thời gian không hợp lẹ:", error);
         return res.status(500).json({ success: false, message: "Lỗi server" });
     }
 };

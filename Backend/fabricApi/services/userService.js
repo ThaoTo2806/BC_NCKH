@@ -134,7 +134,7 @@ exports.changePassword = async (
 exports.getDegrees = async (id) => {
     try {
         const degrees = await db.query(
-            "SELECT degrees.id,degree_name, status,issued_at, graduation_year, gpa, users.common_name FROM degrees, users Where degrees.user_id = users.id and users.id = ?",
+            "SELECT degrees.id, degrees.degree_name,degrees.degree_type, majors.name AS major_name, degrees.status, degrees.issued_at, degrees.graduation_year, degrees.gpa, users.common_name FROM degrees JOIN users ON degrees.user_id = users.id JOIN majors ON degrees.major_id = majors.id WHERE users.id = ?;",
             [id]
         );
         return { success: true, degrees }; // Trả về danh sách đầy đủ

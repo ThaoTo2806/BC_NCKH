@@ -3,9 +3,10 @@ const { sendEmail } = require("../utils/mailSender");
 const Degree = require("../models/degree");
 const crypto = require("crypto");
 const { connectToNetwork } = require("../blockchain/fabricConfig");
+const { getFileFromIPFS, hashImage } = require("../config/ipfs");
 
 // Lấy danh sách bằng cấp với các bộ lọc
-exports.getDegrees = async ({ status, start_date, end_date }) => {
+exports.getDegrees = async ({ status, start_date, end_date , date }) => {
     try {
         let sql = `
             SELECT 
@@ -31,11 +32,18 @@ exports.getDegrees = async ({ status, start_date, end_date }) => {
             params.push(status);
         }
 
-        if (start_date) {
+        
+        if (date) { 
             sql += ` AND degrees.issued_at >= ?`;
-            params.push(start_date);
+            params.push(date);
         }
+        
 
+        if (start_date) {
+                sql += ` AND degrees.issued_at >= ?`;
+                params.push(start_date);
+            }
+            
         if (end_date) {
             sql += ` AND degrees.issued_at <= ?`;
             params.push(end_date);
@@ -55,8 +63,7 @@ exports.getDegrees = async ({ status, start_date, end_date }) => {
 };
 exports.getDegreeDetail = async (id) => {
     try {
-        // Lấy dữ liệu từ database
-        const [rows] = await db.query(
+        const rows = await db.query(
             `SELECT 
                 degrees.id,
                 degrees.degree_name,
@@ -82,6 +89,9 @@ exports.getDegreeDetail = async (id) => {
         const degree = rows[0];
 
         let blockchainDegree = null;
+        let frontImageMatch = false;
+        let backImageMatch = false;
+
         try {
             const { contract } = await connectToNetwork();
             const blockchainData = await contract.evaluateTransaction(
@@ -90,41 +100,60 @@ exports.getDegreeDetail = async (id) => {
             );
             blockchainDegree = JSON.parse(blockchainData.toString());
 
-            // Nếu dữ liệu trên blockchain khác database, báo lỗi hoặc cập nhật database
-            if (
-                (blockchainDegree.Status == "pending_level_2" &&
-                    degree.status == "valid") ||
-                (blockchainDegree.Status == "valid" &&
-                    degree.status == "pending")
-            ) {
-                console.warn(
-                    `Dữ liệu bằng cấp ${id} trên blockchain khác với database!`
+            // Tải ảnh từ IPFS
+            const frontImageIPFS = await getFileFromIPFS(
+                blockchainDegree.FrontImageCID
+            );
+            const backImageIPFS = await getFileFromIPFS(
+                blockchainDegree.BackImageCID
+            );
+
+            // So sánh hash ảnh từ database và IPFS
+            if (frontImageIPFS && degree.degree_image_front) {
+                const frontHashDB = hashImage(
+                    Buffer.from(degree.degree_image_front, "base64")
                 );
+                const frontHashIPFS = hashImage(blockchainDegree.FrontImageCID);
+                frontImageMatch = frontHashDB === frontHashIPFS;
             }
+
+            if (backImageIPFS && degree.degree_image_back) {
+                const backHashDB = hashImage(
+                    Buffer.from(degree.degree_image_back, "base64")
+                );
+                const backHashIPFS = hashImage(blockchainDegree.BackImageCID);
+                backImageMatch = backHashDB === backHashIPFS;
+            }
+
+            return {
+                success: true,
+                degree: {
+                    ...blockchainDegree,
+                    frontImageMatch,
+                    backImageMatch,
+                    frontImage: frontImageIPFS
+                        ? frontImageIPFS.toString("base64")
+                        : null,
+                    backImage: backImageIPFS
+                        ? backImageIPFS.toString("base64")
+                        : null,
+                },
+            };
         } catch (blockchainError) {
             console.error(
                 "Không thể lấy dữ liệu từ Blockchain:",
                 blockchainError
             );
-        }
-
-        if (blockchainDegree) {
             return {
-                success: true,
-                degree: {
-                    ...blockchainDegree,
-                    degree_image_front: degree.degree_image_front,
-                    degree_image_back: degree.degree_image_back,
-                },
+                success: false,
+                message: "Lỗi khi lấy dữ liệu từ Blockchain",
             };
         }
-        return { success: true, degree };
     } catch (error) {
         console.error("Lỗi khi lấy thông tin bằng cấp:", error);
         throw new Error("Lỗi server");
     }
 };
-
 exports.UpdateDegree = async (status, id) => {
     try {
         const result = await db.query(
@@ -132,6 +161,29 @@ exports.UpdateDegree = async (status, id) => {
                  SET status = ?
                  WHERE id = ?`,
             [status, id]
+        );
+
+        if (result.affectedRows === 0) {
+            return {
+                success: false,
+                message: "Không tìm thấy bằng cấp để cập nhật",
+            };
+        }
+
+        return { success: true, message: "Cập nhật trạng thái thành công" };
+    } catch (error) {
+        console.error("Lỗi khi cập nhật bằng cấp:", error);
+        return { success: false, message: "Lỗi server" };
+    }
+};
+
+exports.UpdateDegreeQueryTime = async (timeQuery, id) => {
+    try {
+        const result = await db.query(
+            `UPDATE degrees
+                 SET query_time = ?
+                 WHERE id = ?`,
+            [timeQuery, id]
         );
 
         if (result.affectedRows === 0) {
@@ -203,9 +255,15 @@ const recordDegreeOnBlockchain = async (degree, approver, level) => {
     console.log("Đang ghi bằng cấp lên blockchain:", degree);
 
     const method = level === 1 ? "CreateDegree" : "ApproveLevel2";
-
     let gateway, contract;
     try {
+        // Lấy thông tin role của approver
+        const userResult = await db.query(
+            "SELECT role FROM users WHERE id = ?",
+            [approver.id]
+        );
+        const userRole = userResult[0].role;
+
         const network = await connectToNetwork();
         if (!network || !network.gateway || !network.contract) {
             throw new Error("Không thể kết nối đến blockchain.");
@@ -213,6 +271,7 @@ const recordDegreeOnBlockchain = async (degree, approver, level) => {
 
         gateway = network.gateway;
         contract = network.contract;
+        const now = new Date().toISOString();
 
         let response;
         if (method === "CreateDegree") {
@@ -225,20 +284,26 @@ const recordDegreeOnBlockchain = async (degree, approver, level) => {
                 degree.graduation_year.toString(),
                 degree.gpa.toString(),
                 approver.id.toString(),
+                userRole,
+                degree.degree_image_front,
+                degree.degree_image_back,
+                now,
             ];
+            console.log("Arguments being sent to blockchain:", args);
             response = await contract.submitTransaction(method, ...args);
         } else {
             response = await contract.submitTransaction(
                 method,
                 degree.id.toString(),
-                approver.id.toString()
+                approver.id.toString(),
+                userRole,
+                now
             );
         }
 
         console.log(`Phản hồi từ blockchain: ${response.toString()}`);
         console.log(`Bằng cấp ${degree.id} đã được ghi lên blockchain.`);
 
-        // Đọc lại dữ liệu từ blockchain để xác nhận
         const result = await contract.evaluateTransaction(
             "ReadDegree",
             degree.id.toString()
@@ -253,6 +318,6 @@ const recordDegreeOnBlockchain = async (degree, approver, level) => {
         );
         throw new Error(`Blockchain error: ${error.message}`);
     } finally {
-        if (gateway) await gateway.disconnect();
+        if (gateway) gateway.disconnect();
     }
 };

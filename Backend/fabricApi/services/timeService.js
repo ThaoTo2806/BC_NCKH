@@ -9,7 +9,6 @@ const getCurrentTime = () => {
         year: "numeric",
     }).format(now);
 
-    // Lấy giờ, phút, giây
     const hours = now.getHours().toString().padStart(2, "0");
     const minutes = now.getMinutes().toString().padStart(2, "0");
     const seconds = now.getSeconds().toString().padStart(2, "0");

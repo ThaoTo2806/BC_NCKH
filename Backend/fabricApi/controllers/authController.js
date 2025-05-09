@@ -22,6 +22,7 @@ const register = async (req, res) => {
     }
 };
 
+
 const login = async (req, res) => {
     try {
         const result = await authService.Login(
@@ -39,7 +40,22 @@ const login = async (req, res) => {
             .json({ success: false, message: "Server error" });
     }
 };
-
+const loginwithToken = async (req, res) => {
+    try {
+        const result = await authService.LoginWithToken(
+            req.body.token,
+        );
+        if (result.success) {
+            return res.status(200).json(result);
+        } else {
+            return res.status(401).json(result);
+        }
+    } catch (error) {
+        return res
+            .status(500)
+            .json({ success: false, message: "Server error" });
+    }
+};
 const refreshAccessToken = async (req, res) => {
     const { refreshToken } = req.body;
 
@@ -84,4 +100,4 @@ const refreshAccessToken = async (req, res) => {
     });
 };
 
-module.exports = { register, login, refreshAccessToken };
+module.exports = { register, login, refreshAccessToken , loginwithToken };

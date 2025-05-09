@@ -1,9 +1,9 @@
-/fabricApi/node_modules
+Backend/fabricApi/node_modules
 
-/fabricApi/package_lock.json
+Backend/fabricApi/package_lock.json
 
-
+Backend/fabricApi/blockchain/connection.json
 node_modules/
 yarn.lock
-
-.env
+connection.json
+Backend/fabricApi/.env  

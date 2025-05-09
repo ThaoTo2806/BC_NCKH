@@ -35,6 +35,12 @@ router.put(
     DegreeController.approveDegreeLevel2
 );
 
+router.patch(
+    "/updateTimeQuery/:id",
+    verifyIdentity,
+    DegreeController.UpdateDegreeQueryTime
+);
+
 // Từ chối bằng cấp
 // router.put("/:degreeId/reject", DegreeController.rejectDegree);
 
