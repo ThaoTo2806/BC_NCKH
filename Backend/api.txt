@@ -25,3 +25,120 @@ api 05/03/2025
     "username": "2001223033",
     "citizen_id": "070204002399"
     }
+
+api 10/03/2025 - Chức năng phê duyệt bằng hàng loạt (Batch Approval)
+
+    1. Tạo bằng cấp với tùy chọn duyệt sau:
+    POST http://localhost:3000/api/v1/degrees
+    Content-Type: multipart/form-data
+    Authorization: Bearer <token>
+
+    Form data:
+    - user_id: <số>
+    - major_id: <số>
+    - degree_name: <text>
+    - degree_type: <0, 1, 2, 3>
+    - graduation_year: <năm>
+    - gpa: <số thập phân>
+    - batch_approval: "true"
+    - frontImage: <file>
+    - backImage: <file>
+
+    Phản hồi:
+    {
+      "success": true,
+      "message": "Tạo bằng cấp thành công và đã thêm vào danh sách chờ duyệt",
+      "degreeId": 123,
+      "verificationCode": "ABC123",
+      "batchApproval": true
+    }
+
+    2. Lấy danh sách bằng cấp đang chờ duyệt hàng loạt:
+    GET http://localhost:3000/api/v1/degrees/batch/pending
+    Authorization: Bearer <token>
+
+    Phản hồi:
+    {
+      "success": true,
+      "degrees": [
+        {
+          "id": 123,
+          "degree_name": "Bằng cử nhân",
+          "degree_type": 1,
+          "graduation_year": 2023,
+          "gpa": 3.5,
+          "status": "pending",
+          "owner_name": "Nguyen Van A",
+          "major_name": "Công nghệ thông tin",
+          "issued_at": "2025-03-10T08:30:00"
+        },
+        // ...các bằng cấp khác
+      ]
+    }
+
+    3. Phê duyệt hàng loạt bằng cấp:
+    POST http://localhost:3000/api/v1/degrees/batch/approve
+    Content-Type: application/json
+    Authorization: Bearer <token>
+
+    Body:
+    {
+      "degreeIds": [123, 124, 125]
+    }
+
+    Phản hồi:
+    {
+      "success": true,
+      "message": "Quá trình phê duyệt đã được bắt đầu. Vui lòng kiểm tra trạng thái sau.",
+      "batchId": 456
+    }
+
+    4. Kiểm tra trạng thái tiến trình phê duyệt:
+    GET http://localhost:3000/api/v1/degrees/batch/456/status
+    Authorization: Bearer <token>
+
+    Phản hồi:
+    {
+      "success": true,
+      "batchId": 456,
+      "summary": {
+        "total": 3,
+        "successCount": 2,
+        "failedCount": 0,
+        "pendingCount": 1,
+        "progress": 66.67,
+        "isCompleted": false,
+        "startedAt": "2025-03-10T08:35:00",
+        "completedAt": null
+      },
+      "details": [
+        {
+          "id": 789,
+          "degree_id": 123,
+          "status": "success",
+          "message": "{\"timestamp\":\"2025-03-10T08:35:30\",\"message\":\"Phê duyệt thành công\"}",
+          "created_at": "2025-03-10T08:35:30",
+          "degree_name": "Bằng cử nhân",
+          "owner_name": "Nguyen Van A"
+        },
+        // ...chi tiết các bằng cấp khác
+      ]
+    }
+
+Lưu ý cho Frontend Developer:
+
+1. Luồng làm việc phê duyệt hàng loạt:
+   - Tạo bằng cấp với tùy chọn batch_approval=true
+   - Xem danh sách bằng chờ duyệt hàng loạt
+   - Chọn và gửi yêu cầu phê duyệt hàng loạt
+   - Theo dõi tiến trình xử lý
+
+2. Giao diện theo dõi tiến trình nên có:
+   - Thanh tiến trình hiển thị % hoàn thành
+   - Bảng chi tiết từng bằng đã xử lý
+   - Thời gian bắt đầu/kết thúc (nếu đã hoàn thành)
+   - Có thể làm mới tự động để cập nhật tiến trình
+
+3. Xử lý lỗi:
+   - Hiển thị thông báo lỗi cụ thể cho từng bằng gặp vấn đề
+   - Có tùy chọn thử lại cho các bằng xử lý thất bại

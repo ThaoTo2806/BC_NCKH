@@ -11,14 +11,16 @@ import {
 } from "react-native";
 import LinearGradient from "react-native-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getDegreeByUserId, getTime } from "../utils/api";
+import { getDegreeByUserId, getTime, generateDegreeQRCode } from "../utils/api"; // Thêm API generateQRCode
 import axios from "axios";
 import { RootStackParamList } from "../utils/type.navigate";
-
+import Share from 'react-native-share';
+import RNFS from "react-native-fs";
 export default function VerificationScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [userData, setUserData] = useState(null);
   const [serverTime, setServerTime] = useState("");
+  const [qrCodes, setQrCodes] = useState({});  // State lưu mã QR cho từng bằng cấp
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -37,11 +39,10 @@ export default function VerificationScreen() {
     fetchUserData();
   }, []);
 
-  // Gọi API thời gian thực khi nhấn vào bằng cấp
   const handleDegreePress = async (degree) => {
     try {
       const response = await getTime();
-      const time = response.time; // Thời gian lấy từ server
+      const time = response.time;
       const userId = await AsyncStorage.getItem("userId");
       // Lưu history vào AsyncStorage
       const historyItem = { degreeName: degree.degree_type, time, userId };
@@ -58,7 +59,57 @@ export default function VerificationScreen() {
     }
   };
 
+  const generateQRCodeForDegree = async (degreeId) => {
+    try {
+      const qrCode = await generateDegreeQRCode(degreeId); // Gọi API tạo mã QR
+      setQrCodes((prevQrCodes) => ({ ...prevQrCodes, [degreeId]: qrCode })); // Lưu mã QR vào object theo degreeId
+    } catch (error) {
+      console.error("Lỗi khi tạo mã QR:", error);
+      Alert.alert("Lỗi", "Không thể tạo mã QR.");
+    }
+  };
 
+  
+
+  const shareQRCode = async (degreeId) => {
+    try {
+      let qrCodeUri = qrCodes[degreeId]; // Lấy URI của mã QR
+  
+      if (!qrCodeUri) {
+        Alert.alert("Lỗi", "Không tìm thấy mã QR để chia sẻ.");
+        return;
+      }
+  
+      let fileUri = qrCodeUri;
+  
+      // Nếu mã QR là base64, lưu ảnh vào bộ nhớ
+      if (qrCodeUri.startsWith("data:image")) {
+        const filePath = `${RNFS.CachesDirectoryPath}/qrcode_${degreeId}.png`;
+  
+        await RNFS.writeFile(
+          filePath,
+          qrCodeUri.replace(/^data:image\/\w+;base64,/, ""),
+          "base64"
+        );
+  
+        fileUri = `file://${filePath}`;
+      }
+  
+  
+      // Dùng Share.open để mở hộp thoại chia sẻ
+      await Share.open({
+        url: fileUri,
+        title: "Chia sẻ mã QR",
+        failOnCancel: false,
+      });
+  
+    } catch (error) {
+      console.error("❌ Lỗi khi chia sẻ mã QR:", error);
+      Alert.alert("Lỗi", "Không thể chia sẻ mã QR.");
+    }
+  };
+  
+  
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, "0");
@@ -80,7 +131,9 @@ export default function VerificationScreen() {
       <ScrollView contentContainerStyle={[styles.content, { flexGrow: 1 }]}>
         {userData &&
           userData.degrees &&
-          userData.degrees.map((degree, index) => (
+          userData.degrees
+          .filter((degree) => degree.status === 'valid')
+          .map((degree, index) => (
             <TouchableOpacity key={index}>
               <LinearGradient
                 colors={["#425A8B", "#1E2A47"]}
@@ -136,11 +189,34 @@ export default function VerificationScreen() {
                     <Text style={styles.serialNumber}>Số hiệu: {degree.serial_number}CT9X936T</Text>
                   </View>
                 </View>
+
+                {/* Nút tạo mã QR */}
+                <TouchableOpacity
+                  style={styles.qrButton}
+                  onPress={() => generateQRCodeForDegree(degree.id)}
+                >
+                  <Text style={styles.qrButtonText}>Tạo Mã QR xuất trình một lần</Text>
+                </TouchableOpacity>
+
+                {/* Hiển thị mã QR nếu có */}
+                {qrCodes[degree.id] ? (
+                  <View style={styles.qrContainer}>
+                    <Image
+                      source={{ uri: qrCodes[degree.id] }} // Hiển thị mã QR theo degree.id
+                      style={styles.qrCodeImage}
+                    />
+                     <TouchableOpacity
+      style={styles.shareButton}
+      onPress={() => shareQRCode(degree.id)}
+    >
+      <Text style={styles.shareButtonText}>Chia sẻ</Text>
+    </TouchableOpacity>
+                  </View>
+                ) : null}
               </LinearGradient>
             </TouchableOpacity>
           ))}
       </ScrollView>
-
 
       {/* Nút quay lại */}
       <TouchableOpacity
@@ -171,14 +247,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   card: {
+    width: "100%",  // Chiếm 90% chiều rộng màn hình
+    maxWidth: 430, // Tối đa 400px
     marginVertical: 10,
-    alignSelf: "stretch",
     borderRadius: 20,
-    justifyContent: "space-between",
-    paddingVertical: 30,
+    paddingVertical: 20,
     alignItems: "center",
-    padding: 20,
-    width: 450,
+    paddingHorizontal: 15,
   },
   checkIcon: {
     width: 22,
@@ -238,7 +313,7 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 30,
     fontWeight: "bold",
-    marginTop: 100,
+    marginTop: 20,
   },
   title: {
     fontSize: 35,
@@ -259,14 +334,45 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 25,
     shadowColor: "#000",
+    shadowOpacity: 0.5,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5, // Hiển thị bóng trên Android
+    shadowRadius: 5,
   },
   menuIcon: {
-    width: 30,
-    height: 30,
+    width: 25,
+    height: 25,
   },
-
+  qrButton: {
+    backgroundColor: "#FF7F50",
+    padding: 15,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  qrButtonText: {
+    color: "#FFF",
+    fontSize: 18,
+  },
+  qrContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  qrCodeImage: {
+    width: 200,
+    height: 200,
+  },
+  shareButton: {
+    backgroundColor: "#008CBA",
+    padding: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  shareButtonText: {
+    color: "#FFF",
+    fontSize: 18,
+  },
 });

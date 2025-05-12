@@ -45,7 +45,7 @@ export const DegreeAproveListScreen= () => {
 
   useEffect(() => {
     Degrees("pending");
-  }, [degreeList]);
+  }, []);
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>

@@ -6,31 +6,45 @@ export const APP_COLOR = {
 export const LIST_MAJOR = [
     {
         id: 1,
-        name: "Công nghệ thông tin"
+        name: "Khoa học máy tính"
     },
     {
         id: 2,
-        name: "Kinh tế"
+        name: "Công nghệ thông tin"
     },
     {
         id: 3,
-        name: "Ngoại Ngữ"
+        name: "Kế toán"
+    },
+    {
+        id: 4,
+        name: "Quản trị kinh doanh"
+    },
+    {
+        id: 5,
+        name: "Tài chính kế toán"
     }
+    
+
 ]
 
 export const LIST_DEGREE_TYPE = [
     {
-        id: 1,
+        id: 0,
         name: "Cử nhân"
     },
     {
-        id: 2,
+        id: 1,
         name: "Thạc sĩ"
     },
     {
-        id: 3,
+        id: 2,
         name: "Tiến sĩ"
-    }
+    },
+    {
+        id: 3,
+        name: "Kỹ sư"
+    },
 ]
 
 

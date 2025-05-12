@@ -312,6 +312,149 @@ class DegreeVerification extends Contract {
             gpa <= 4.0
         );
     }
+
+    // New function to batch create degrees
+    async CreateDegreesBatch(ctx, degreesData) {
+        try {
+            // Parse the batch data
+            const degrees = JSON.parse(degreesData);
+
+            if (!Array.isArray(degrees)) {
+                throw new Error(
+                    "Dữ liệu đầu vào phải là một mảng các bằng cấp"
+                );
+            }
+
+            const results = [];
+
+            // Process each degree in the batch
+            for (const degreeData of degrees) {
+                try {
+                    const {
+                        id,
+                        userId,
+                        major,
+                        degreeName,
+                        degreeType,
+                        graduationYear,
+                        gpa,
+                        approver,
+                        approverRole,
+                        frontImageCID,
+                        backImageCID,
+                        issuedAt,
+                    } = degreeData;
+
+                    // Check if degree already exists to avoid duplicates
+                    const exists = await this.DegreeExists(ctx, id);
+                    if (exists) {
+                        results.push({
+                            id,
+                            success: false,
+                            error: "Bằng cấp đã tồn tại",
+                        });
+                        continue;
+                    }
+
+                    // Validate approver role
+                    if (approverRole !== "manager") {
+                        results.push({
+                            id,
+                            success: false,
+                            error: "Unauthorized: Only manager can create degree",
+                        });
+                        continue;
+                    }
+
+                    // Validate degree data
+                    if (
+                        !this._validateDegreeData(
+                            degreeType,
+                            graduationYear,
+                            gpa
+                        )
+                    ) {
+                        results.push({
+                            id,
+                            success: false,
+                            error: "Invalid degree data",
+                        });
+                        continue;
+                    }
+
+                    // Create approval record
+                    const approvalRecord = {
+                        approver: approver,
+                        timestamp: issuedAt,
+                        level: 1,
+                        signature: this._generateHMAC(
+                            JSON.stringify({
+                                id,
+                                approver,
+                                timestamp: issuedAt,
+                            }),
+                            (await ctx.stub.getState("systemParams")).toString()
+                        ),
+                    };
+
+                    // Create degree object
+                    const degree = {
+                        ID: id,
+                        UserID: userId,
+                        Major: major,
+                        DegreeName: degreeName,
+                        DegreeType: Number(degreeType),
+                        GraduationYear: Number(graduationYear),
+                        GPA: Number(gpa),
+                        Status: "pending_level_2",
+                        IssuedAt: issuedAt,
+                        ApprovedByLevel1: approver,
+                        ApprovedAtLevel1: issuedAt,
+                        ApprovedByLevel2: null,
+                        ApprovedAtLevel2: null,
+                        FrontImageCID: frontImageCID,
+                        BackImageCID: backImageCID,
+                        LastUpdated: issuedAt,
+                        DegreeHash: null,
+                        ApprovalChain: [approvalRecord],
+                        MerkleProof: null,
+                        BatchProcessed: true,
+                    };
+
+                    // Generate degree hash and merkle proof
+                    degree.DegreeHash = this._generateDegreeHash(degree);
+                    degree.MerkleProof = this._createMerkleProof(
+                        degree.ApprovalChain
+                    );
+
+                    // Store in ledger
+                    await ctx.stub.putState(
+                        id,
+                        Buffer.from(stringify(sortKeysRecursive(degree)))
+                    );
+
+                    results.push({
+                        id,
+                        success: true,
+                    });
+                } catch (error) {
+                    results.push({
+                        id: degreeData.id || "unknown",
+                        success: false,
+                        error: error.message,
+                    });
+                }
+            }
+
+            return JSON.stringify({
+                successful: results.filter((r) => r.success).length,
+                failed: results.filter((r) => !r.success).length,
+                results: results,
+            });
+        } catch (error) {
+            throw new Error(`Batch processing failed: ${error.message}`);
+        }
+    }
 }
 
 module.exports = DegreeVerification;

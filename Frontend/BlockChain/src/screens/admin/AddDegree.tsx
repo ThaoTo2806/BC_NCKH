@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Image,
@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import {launchImageLibrary} from 'react-native-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import ShareButton from '../../components/ShareButton';
-import {APP_COLOR} from '../../utils/constant';
-import {useNavigation} from '@react-navigation/native';
-import {StackNavigationProp} from '@react-navigation/stack';
-import {RootStackParamList} from '../../utils/type.navigate';
-import {addDegree} from '../../utils/api';
+import { APP_COLOR } from '../../utils/constant';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../utils/type.navigate';
+import { addDegree } from '../../utils/api';
 
 const styles = StyleSheet.create({
   container: {
@@ -80,8 +80,10 @@ const styles = StyleSheet.create({
 
 type NavigationProps = StackNavigationProp<RootStackParamList, 'AddDegree'>;
 
-const AddDegree = ({route}: any) => {
+const AddDegree = ({ route }: any) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [imageFrontUri, setImageFrontUri] = useState<string | null>(null); // ảnh mặt trước
+  const [imageFrontName, setImageFrontName] = useState<string | null>(null);
 
   const {
     id,
@@ -91,10 +93,19 @@ const AddDegree = ({route}: any) => {
     graduation_year,
     gpa,
     hash_qrcode,
+    imageFrontUri: frontUriFromRoute,
+    imageFrontName: frontNameFromRoute// lấy từ route
   } = route.params;
 
+  const batch = null;
+
+  React.useEffect(() => {
+    if (frontUriFromRoute) setImageFrontUri(frontUriFromRoute);
+    if (frontNameFromRoute) setImageFrontName(frontNameFromRoute);
+  }, [frontUriFromRoute, frontNameFromRoute]);
+
   const pickFiles = () => {
-    launchImageLibrary({mediaType: 'photo', selectionLimit: 2}, response => {
+    launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 }, response => {
       if (response.didCancel) {
       } else if (response.errorMessage) {
       } else {
@@ -103,7 +114,7 @@ const AddDegree = ({route}: any) => {
     });
   };
 
-  const uploadFiles = async () => {
+  const uploadFiles = async (batch) => {
     if (selectedFiles.length === 0) {
       Alert.alert('Chưa chọn file!');
       return;
@@ -111,17 +122,28 @@ const AddDegree = ({route}: any) => {
 
     const formData = new FormData();
 
+    if (!imageFrontUri) {
+      Alert.alert('Vui lòng chọn ảnh mặt trước!');
+      return;
+    }
+
+    if (selectedFiles.length === 0) {
+      Alert.alert('Vui lòng chọn ảnh mặt sau!');
+      return;
+    }
+
     formData.append('frontImage', {
+      uri: imageFrontUri,
+      type: 'image/jpeg',
+      name: imageFrontName || 'front.jpg',
+    });
+
+    formData.append('backImage', {
       uri: selectedFiles[0].uri,
       type: selectedFiles[0].type,
       name: selectedFiles[0].fileName,
     });
 
-    formData.append('backImage', {
-      uri: selectedFiles[1].uri,
-      type: selectedFiles[1].type,
-      name: selectedFiles[1].fileName,
-    });
 
     formData.append('user_id', id);
     formData.append('major_id', +major_id);
@@ -130,19 +152,23 @@ const AddDegree = ({route}: any) => {
     formData.append('graduation_year', graduation_year);
     formData.append('gpa', gpa);
     formData.append('hash_qrcode', hash_qrcode);
+    formData.append('batch_approval', batch);
+    console.log('Form data:', formData); // Log the form data to check its structure
 
     try {
       const response = await addDegree(formData);
-
+      console.log('Response from server:', response); // Log the response data
       if (response.success) {
         Alert.alert('Upload thành công!');
-        navigation.navigate('ListCertificationPersonal', {id});
+        navigation.navigate('AdminHome');
+        //navigation.navigate('ListCertificationPersonal', { id });
       } else {
         Alert.alert('Upload thất bại');
-        navigation.navigate('ListCertificationPersonal', {id});
+        navigation.navigate('ListCertificationPersonal', { id });
       }
     } catch (error) {
-      console.error('Lỗi upload file:', error);
+      console.error('Lỗi upload file:', error); // Log the entire error object
+      Alert.alert('Lỗi upload file', error.message || 'Unknown error');
     }
   };
   const navigation = useNavigation<NavigationProps>();
@@ -161,19 +187,25 @@ const AddDegree = ({route}: any) => {
         <Text style={styles.backText}>Quay lại</Text>
       </TouchableOpacity>
       <View style={styles.uploadContainer}>
-        {selectedFiles.length > 0 ? (
-          selectedFiles.map((file, index) => (
-            <View key={index} style={{marginRight: 10}}>
-              <Image
-                source={{uri: file.uri}}
-                style={{width: 150, height: 150, borderRadius: 10}}
-              />
-              {/* <Text style={{textAlign: 'center'}}>{file.fileName}</Text> */}
-            </View>
-          ))
+        {imageFrontUri ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <Image
+              source={{ uri: imageFrontUri }}
+              style={{ width: 150, height: 150, borderRadius: 10, marginRight: 10 }}
+            />
+            {selectedFiles.length > 0 &&
+              selectedFiles.map((file, index) => (
+                <Image
+                  key={index}
+                  source={{ uri: file.uri }}
+                  style={{ width: 150, height: 150, borderRadius: 10 }}
+                />
+              ))}
+          </View>
         ) : (
           <Image source={require('../../../assets/icon/uploadicon.png')} />
         )}
+
         <ShareButton
           pressStyles={styles.uploadButton}
           // btnStyles={styles.uploadIcon}
@@ -183,8 +215,12 @@ const AddDegree = ({route}: any) => {
         />
       </View>
 
-      <TouchableOpacity style={styles.confirmButton} onPress={uploadFiles}>
+      <TouchableOpacity style={styles.confirmButton} onPress={() => uploadFiles("false")}>
         <Text style={styles.confirmButtonText}>Xác nhận</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.confirmButton} onPress={() => uploadFiles("true")}>
+        <Text style={styles.confirmButtonText}>Duyệt sau</Text>
       </TouchableOpacity>
     </View>
   );

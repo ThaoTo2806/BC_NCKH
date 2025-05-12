@@ -8,10 +8,11 @@ import {
   StyleSheet,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import {RootStackParamList} from '../../utils/type.navigate';
 import ShareButton from '../../components/ShareButton';
-import {getAllDegrees} from '../../utils/api';
+import {approveBatch, getAllDegrees, getDegressBatch} from '../../utils/api';
 import {APP_COLOR} from '../../utils/constant';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 type NavigationProps = StackNavigationProp<RootStackParamList, 'ListRequests'>;
@@ -19,12 +20,12 @@ type NavigationProps = StackNavigationProp<RootStackParamList, 'ListRequests'>;
 const status_list = [
   {
     id: 1,
-    title: 'Tạo mới',
+    title: 'Chờ duyệt',
     value: 'new',
   },
   {
     id: 2,
-    title: 'Đang đợi duyệt',
+    title: 'Đang đợi duyệt 2',
     value: 'pending',
   },
   {
@@ -58,7 +59,22 @@ export default function ListRequestsScreen() {
       console.log('check data >>>>>', data);
     };
 
-    fetchDegrees();
+    const fetchBatchDegrees = async () => {
+      const result = await getDegressBatch();
+      console.log('check result >>>>>', result);
+      if (result?.success === true) {
+        setData(result?.degrees);
+      } else {
+        console.log('Không fetch được degrees');
+      }
+      console.log('check data >>>>>', data);
+    };
+
+    if (status === 'new') {
+      fetchBatchDegrees();
+    } else {
+      fetchDegrees();
+    }
   }, [status]);
 
   useEffect(() => {
@@ -69,6 +85,21 @@ export default function ListRequestsScreen() {
 
     fetchRole();
   }, []);
+
+  const handleApproveBatch = async () => {
+    const dataMap = data.map((item: any) => {
+      return item.id;
+    });
+
+    const result = await approveBatch(dataMap);
+    console.log('check result >>>>>', result);
+    if (result?.success === true) {
+      Alert.alert('Thông báo', result?.message);
+    }
+    console.log('check result >>>>>', result);
+
+    console.log('check dataMap >>>>>', dataMap);
+  };
 
   return (
     <View style={styles.container}>
@@ -103,32 +134,44 @@ export default function ListRequestsScreen() {
           </View>
         </TouchableOpacity>
       </View>
-      <View
-        style={{
-          flexDirection: 'row',
-          margin: 20,
-          gap: 2,
-          justifyContent: 'space-between',
-        }}>
-        {status_list.map((item, index) => {
-          return (
-            <ShareButton
-              // btnStyles={
-              //   statusActive === item.id
-              //     ? `backgroundColor: ${APP_COLOR.PRIMARY}`
-              //     : `#d3d3d3`
-              // }
-              key={index}
-              btnStyles={
-                statusActive === item.id
-                  ? {backgroundColor: APP_COLOR.PRIMARY}
-                  : {backgroundColor: '#d3d3d3'}
-              }
-              name={item.title}
-              onPress={() => (setStatus(item.value), setStatusActive(item.id))}
-            />
-          );
-        })}
+      <View>
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            flexDirection: 'row',
+            paddingHorizontal: 10,
+            gap: 10,
+            alignItems: 'center',
+          }}
+          style={{
+            marginRight: 20,
+          }}>
+          {status_list.map((item, index) => {
+            return (
+              <ShareButton
+                key={index}
+                btnStyles={
+                  statusActive === item.id
+                    ? {
+                        backgroundColor: APP_COLOR.PRIMARY,
+                        minWidth: 130,
+                        marginHorizontal: 5,
+                      }
+                    : {
+                        backgroundColor: '#d3d3d3',
+                        minWidth: 130,
+                        marginHorizontal: 5,
+                      }
+                }
+                name={item.title}
+                onPress={() => (
+                  setStatus(item.value), setStatusActive(item.id)
+                )}
+              />
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Danh sách bằng cấp */}
@@ -167,6 +210,27 @@ export default function ListRequestsScreen() {
             </TouchableOpacity>
           ))} */}
       </ScrollView>
+      {status === 'new' ? (
+        <ShareButton
+          name="Duyệt hàng loạt"
+          onPress={handleApproveBatch}
+          btnStyles={{
+            backgroundColor: APP_COLOR.PRIMARY,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginHorizontal: 50,
+            paddingVertical: 10,
+            borderRadius: 30,
+          }}
+          textStyles={{
+            textTransform: 'uppercase',
+            color: '#fff',
+            paddingVertical: 5,
+          }}
+        />
+      ) : (
+        <></>
+      )}
     </View>
   );
 }

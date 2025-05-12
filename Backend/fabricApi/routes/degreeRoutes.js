@@ -16,7 +16,7 @@ router.put("/:id", verifyIdentity, DegreeController.UpdateDegree);
 router.get("/:id", verifyIdentity, DegreeController.getDegreeDetail);
 // router.post(
 //     "/upload-degree",
-//     upload.fields([{ name: "front" }, { name: "back" }]),
+//     upload.fields([{ name: "front" }, { name: "back" }]),git
 //     DegreeController.uploadDegree
 // );
 
@@ -46,4 +46,29 @@ router.patch(
 
 // Lấy danh sách bằng cấp đang chờ duyệt
 router.get("/pending", verifyIdentity, DegreeController.getPendingDegrees);
+
+// Lấy danh sách bằng cấp đang chờ duyệt hàng loạt
+router.get(
+    "/batch/pending",
+    verifyIdentity,
+    DegreeController.getPendingBatchApprovals
+);
+
+// Duyệt hàng loạt bằng cấp
+router.post(
+    "/batch/approve",
+    verifyIdentity,
+    DegreeController.approveBatchDegrees
+);
+
+// Kiểm tra trạng thái xử lý lô
+router.get(
+    "/batch/:batchId/status",
+    verifyIdentity,
+    DegreeController.getBatchStatus
+);
+
+router.get("/:id/qrcode", DegreeController.generateDegreeQRCode);
+router.get("/:id/qrcode1", DegreeController.generateDegreeQRCode1);
+
 module.exports = router;

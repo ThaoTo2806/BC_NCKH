@@ -2,10 +2,11 @@ const db = require("../config/connectToDB");
 const { sendEmail } = require("../utils/mailSender");
 const crypto = require("crypto");
 
+
 exports.getUsers = async () => {
     try {
         const users = await db.query(
-            "SELECT id, username, email, common_name, role, created_at FROM users"
+            "SELECT id, username, email, common_name, role, created_at,dob FROM users"
         );
         return { success: true, users }; // Trả về danh sách đầy đủ
     } catch (error) {
@@ -83,12 +84,14 @@ exports.generateNewPassword = async (common_name, username, citizen_id) => {
         throw new Error("Lỗi server");
     }
 };
+
 exports.changePassword = async (
     username,
     oldPassword,
     newPassword,
     confirmPassword
 ) => {
+
     try {
         // Kiểm tra mật khẩu mới và mật khẩu xác nhận có trùng khớp không
         if (newPassword !== confirmPassword) {
@@ -131,6 +134,7 @@ exports.changePassword = async (
     }
 };
 
+
 exports.getDegrees = async (id) => {
     try {
         const degrees = await db.query(
@@ -143,6 +147,7 @@ exports.getDegrees = async (id) => {
         throw new Error("Lỗi server");
     }
 };
+
 // Tạo chỉnh sửa PIN
 exports.createPin = async (req, res) => {
     try {
@@ -151,7 +156,7 @@ exports.createPin = async (req, res) => {
         // Kiểm tra đầu vào hợp lệ
         if (!validateInput(pin) || !validateInput(username)) {
             return res.status(400).json({
-                data: {
+                data:{
                     success: false,
                     message: "Invalid input. Username and PIN are required.",
                 },
@@ -163,15 +168,18 @@ exports.createPin = async (req, res) => {
 
         if (result.affectedRows === 0) {
             return res.status(404).json({
-                data: {
+                data:{
                     success: false,
                     message: "User not found or PIN not updated.",
                 },
+
             });
         }
 
         return res.status(200).json({
-            data: {
+
+            data:{
+
                 success: true,
                 message: "PIN updated successfully.",
             },
@@ -179,10 +187,10 @@ exports.createPin = async (req, res) => {
     } catch (error) {
         console.error("Error updating PIN:", error);
         return res.status(500).json({
-            data: {
+            data:{
                 success: false,
                 message: "An error occurred while updating PIN.",
-            },
+            }
         });
     }
 };
@@ -195,10 +203,12 @@ exports.getPin = async (req, res) => {
         //Kiểm tra đầu vào hợp lệ
         if (!validateInput(username)) {
             return res.status(400).json({
-                data: {
+
+                data:{
                     success: false,
                     message: "Invalid input. Username is required.",
-                },
+                }
+
             });
         }
 
@@ -207,19 +217,19 @@ exports.getPin = async (req, res) => {
 
         if (rows.length === 0) {
             return res.status(404).json({
-                data: {
+                data:{
                     success: false,
                     message: "User not found.",
-                },
+                }
             });
         }
 
         return res.status(200).json({
-            data: {
+            data:{
                 success: true,
                 message: "PIN retrieved successfully.",
                 pin: rows[0].pin_code,
-            },
+            }
         });
     } catch (error) {
         console.error("Error retrieving PIN:", error);

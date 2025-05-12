@@ -4,6 +4,7 @@ const path = require("path");
 const { sendEmail } = require("../utils/mailSender");
 const jwt = require("jsonwebtoken");
 
+
 const db = require("../config/connectToDB");
 const { constrainedMemory } = require("process");
 const util = require("util");
@@ -33,11 +34,11 @@ async function Login(username, password) {
         // Kiểm tra mật khẩu
         if (password !== userRecord.enrollment_secret) {
             return {
+
                 message: "Invalid credentials",
                 data: { code: "INVALID_CREDENTIALS", success: false },
             };
         }
-
         if (!userRecord.pin_code && userRecord.role !== "admin" && userRecord.role !== "manager") {
             return {
                 message: "Pin code required",
@@ -84,6 +85,7 @@ async function Login(username, password) {
         };
     }
 }
+
 async function LoginWithToken(token) {
     try {
         
@@ -110,6 +112,7 @@ async function LoginWithToken(token) {
     }
 
 }
+
 async function Register(req) {
     const {
         username,
@@ -122,6 +125,7 @@ async function Register(req) {
         state,
         locality,
         role,
+        dob, // ngày sinh
     } = req.body;
 
     let wallet;
@@ -240,34 +244,38 @@ async function Register(req) {
 
         // Lưu user vào database
         const insertSQL = `
-            INSERT INTO users (username, email, citizen_id, common_name, organization, organizational_unit, country, state, locality, role, certificate, public_key, private_key, enrollment_secret) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    INSERT INTO users (
+        username, email, citizen_id, common_name, organization, organizational_unit,
+        country, state, locality, role, dob, certificate, public_key, private_key, enrollment_secret
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-        await new Promise((resolve, reject) => {
-            db.query(
-                insertSQL,
-                [
-                    username,
-                    email,
-                    citizen_id,
-                    common_name,
-                    organization,
-                    organizational_unit,
-                    country,
-                    state,
-                    locality,
-                    role,
-                    EnrollUser.certificate,
-                    EnrollUser.key.getPublicKey().toBytes(),
-                    EnrollUser.key.toBytes(),
-                    enrollmentSecret,
-                ],
-                (err, result) => {
-                    if (err) reject(err);
-                    else resolve(result);
-                }
-            );
-        });
+// Gọi truy vấn:
+await new Promise((resolve, reject) => {
+    db.query(
+        insertSQL,
+        [
+            username,
+            email,
+            citizen_id,
+            common_name,
+            organization,
+            organizational_unit,
+            country,
+            state,
+            locality,
+            role,
+            dob, // ngày sinh
+            EnrollUser.certificate,
+            EnrollUser.key.getPublicKey().toBytes(),
+            EnrollUser.key.toBytes(),
+            enrollmentSecret,
+        ],
+        (err, result) => {
+            if (err) reject(err);
+            else resolve(result);
+        }
+    );
+});
 
         // Nội dung email
         let emailContent = `

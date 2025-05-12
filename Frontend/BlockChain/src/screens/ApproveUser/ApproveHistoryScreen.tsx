@@ -12,6 +12,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/type.navigate';
 import axios from 'axios';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { fetchDegree } from '../../utils/api';
 
 interface DegreeProps {
   owner_name: string;
@@ -52,7 +53,7 @@ export default function ApproveHistoryScreen() {
     try {
       const res = await fetchDegree(status , date);
       const degree = res.data;
-      setdegreeList(degree.degrees || []);
+      setDegreeList(degree.degrees || []);
     } catch (error) {
       console.error('Lỗi khi lấy danh sách bằng cấp:', error);
     }

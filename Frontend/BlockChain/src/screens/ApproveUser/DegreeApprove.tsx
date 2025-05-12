@@ -20,26 +20,26 @@ export const DegreeApprove = () => {
     const processImages = (degreeData) => {
       try {
         // Process front image
-        if (degreeData?.degree_image_front && typeof degreeData.degree_image_front === 'string') {
-          const frontUri = degreeData.degree_image_front.startsWith('data:image')
-            ? degreeData.degree_image_front
-            : `data:image/jpeg;base64,${degreeData.degree_image_front}`;
+        if (degreeData?.frontImage && typeof degreeData.frontImage === 'string') {
+          const frontUri = degreeData.frontImage.startsWith('data:image')
+            ? degreeData.frontImage
+            : `data:image/jpeg;base64,${degreeData.frontImage}`;
           setimageFront(frontUri);
-        } else if (degreeData?.degree_image_front?.type === "Buffer" && Array.isArray(degreeData.degree_image_front.data)) {
-          const base64ImageFront = arrayBufferToBase64(degreeData.degree_image_front.data);
+        } else if (degreeData?.frontImage?.type === "Buffer" && Array.isArray(degreeData.frontImage.data)) {
+          const base64ImageFront = arrayBufferToBase64(degreeData.frontImage.data);
           setimageFront(base64ImageFront);
         } else {
           setimageFront('');
         }
 
         // Process back image
-        if (degreeData?.degree_image_back && typeof degreeData.degree_image_back === 'string') {
-          const backUri = degreeData.degree_image_back.startsWith('data:image')
-            ? degreeData.degree_image_back
-            : `data:image/jpeg;base64,${degreeData.degree_image_back}`;
+        if (degreeData?.backImage && typeof degreeData.backImage === 'string') {
+          const backUri = degreeData.backImage.startsWith('data:image')
+            ? degreeData.backImage
+            : `data:image/jpeg;base64,${degreeData.backImage}`;
           setimageBack(backUri);
-        } else if (degreeData?.degree_image_back?.type === "Buffer" && Array.isArray(degreeData.degree_image_back.data)) {
-          const base64ImageBack = arrayBufferToBase64(degreeData.degree_image_back.data);
+        } else if (degreeData?.backImage?.type === "Buffer" && Array.isArray(degreeData.backImage.data)) {
+          const base64ImageBack = arrayBufferToBase64(degreeData.backImage.data);
           setimageBack(base64ImageBack);
         } else {
           setimageBack('');

@@ -1,0 +1,152 @@
+<!-- views/degree.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thông Tin Bằng Cấp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Roboto', Arial, sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      color: #333;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+      overflow: hidden;
+    }
+    .header {
+      text-align: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 2rem;
+      color: #2d3748;
+    }
+    .info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .info-item {
+      flex: 1 1 45%;
+      background: #edf2f7;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    .info-item span.label {
+      font-weight: 500;
+      color: #4a5568;
+    }
+    .info-item span.value {
+      font-weight: 700;
+      color: #2d3748;
+    }
+    .images {
+      margin-top: 30px;
+    }
+    .images h2 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      color: #2d3748;
+    }
+    .image-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .image-wrapper img {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .message {
+      text-align: center;
+      padding: 20px;
+      font-size: 1.2rem;
+      color: #e53e3e;
+    }
+    @media (max-width: 600px) {
+      .info-item {
+        flex: 1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <% if (success) { %>
+      <div class="header">
+        <h1>Thông Tin Bằng Cấp</h1>
+      </div>
+      <div class="info">
+        <div class="info-item">
+          <span class="label">Chủ sở hữu:</span>
+          <span class="value"><%= data.degree.owner_name || "Không có dữ liệu" %></span>
+        </div>
+        <div class="info-item">
+          <span class="label">Tên bằng cấp:</span>
+          <span class="value"><%= data.degree.degree_type === 0
+            ? "cử nhân"
+            : data.degree.degree_type === 1
+              ? "thạc sĩ"
+              : data.degree.degree_type === 2
+                ? "tiến sĩ"
+                : "bác sĩ" || "Không có dữ liệu" %></span>
+        </div>
+        <div class="info-item">
+          <span class="label">Chuyên ngành:</span>
+          <span class="value"><%= data.degree.major_name || "Không có dữ liệu" %></span>
+        </div>
+        <div class="info-item">
+          <span class="label">Năm tốt nghiệp:</span>
+          <span class="value"><%= data.degree.graduation_year || "Không có dữ liệu" %></span>
+        </div>
+        <div class="info-item">
+          <span class="label">GPA:</span>
+          <span class="value"><%= data.degree.gpa || "Không có dữ liệu" %></span>
+        </div>
+        <div class="info-item">
+          <span class="label">Trạng thái:</span>
+          <span class="value"><%= data.degree.status || "Không có dữ liệu" %></span>
+        </div>
+      </div>
+
+      <div class="images">
+        <h2>Ảnh Bằng Cấp</h2>
+        <div class="image-wrapper">
+          <% if (data.degree.frontImage) { %>
+            <img src="data:image/jpeg;base64,<%= data.degree.frontImage %>" alt="Ảnh mặt trước" />
+          <% } else { %>
+            <div class="info-item" style="flex: 1 1 100%;">Không có ảnh mặt trước.</div>
+          <% } %>
+          <% if (data.degree.backImage) { %>
+            <img src="data:image/jpeg;base64,<%= data.degree.backImage %>" alt="Ảnh mặt sau" />
+          <% } else { %>
+            <div class="info-item" style="flex: 1 1 100%;">Không có ảnh mặt sau.</div>
+          <% } %>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="message">
+        <%= message || "Không tìm thấy bằng cấp." %>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>

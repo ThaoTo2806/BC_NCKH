@@ -34,10 +34,12 @@ export const LoginScreen = () => {
 
   const handleLogin = async (username: string, password: string) => {
     try {
+      console.log('username: ', username);
+      console.log('p: ', password);
       // await AsyncStorage.removeItem('access_token');
       const res = await loginAPI(username, password);
 
-      console.log(res.data);
+      console.log('res: ',res);
 
       if (res.data.code == 'INVALID_CREDENTIALS') {
         Alert.alert('Thông báo', 'Sai tên đăng nhập hoặc mật khẩu');

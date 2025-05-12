@@ -18,6 +18,8 @@ import {Formik} from 'formik';
 import {RegisterSchema2} from '../../utils/validate.schema';
 import {registerAPI} from '../../utils/api';
 import ShareSelect from '../../components/ShareSelectedBox';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import moment from 'moment'; // Để format ngày
 
 const styles = StyleSheet.create({
   container: {
@@ -26,7 +28,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#D3D3D3',
-    height: 425,
+    height: 570,
     position: 'absolute',
     bottom: 250,
     left: 20,
@@ -92,6 +94,8 @@ const styles = StyleSheet.create({
 });
 type NavigationProps = StackNavigationProp<RootStackParamList, 'Register2'>;
 const Register2 = ({route}: any) => {
+  const [showDatePicker, setShowDatePicker] = React.useState(false);
+
   const {
     common_name,
     organization,
@@ -100,14 +104,7 @@ const Register2 = ({route}: any) => {
     state,
     locality,
   } = route.params;
-  console.log(
-    common_name,
-    organization,
-    organizational_unit,
-    country,
-    state,
-    locality,
-  );
+  
   const navigation = useNavigation<NavigationProps>();
 
   const handleRegister2 = async (
@@ -115,7 +112,11 @@ const Register2 = ({route}: any) => {
     cccd: string,
     email: string,
     role: string,
+    dob: string,
   ) => {
+    const formattedDob = moment(dob).format('YYYY-MM-D');
+    //const formattedDob = moment(dob).format('DD/MM/YYYY'); // <-- format lại tại đây
+  
     console.log(
       common_name,
       organization,
@@ -127,8 +128,9 @@ const Register2 = ({route}: any) => {
       cccd,
       email,
       role,
+      formattedDob,
     );
-
+  
     const res = await registerAPI(
       username,
       email,
@@ -140,8 +142,9 @@ const Register2 = ({route}: any) => {
       state,
       locality,
       role,
+      formattedDob 
     );
-    console.log(res);
+  
     if (res?.success === true) {
       Alert.alert('Thông báo', 'Đăng ký thành công');
       navigation.navigate('Login');
@@ -149,6 +152,7 @@ const Register2 = ({route}: any) => {
       Alert.alert('Thông báo', res?.message);
     }
   };
+  
   return (
     <SafeAreaView style={{flex: 1}}>
       <Formik
@@ -158,6 +162,7 @@ const Register2 = ({route}: any) => {
           cccd: '',
           email: '',
           role: '',
+          dob: '',
         }}
         onSubmit={values =>
           handleRegister2(
@@ -165,6 +170,7 @@ const Register2 = ({route}: any) => {
             values.cccd,
             values.email,
             values.role,
+            values.dob,
           )
         }>
         {({
@@ -214,6 +220,44 @@ const Register2 = ({route}: any) => {
                   value={values.cccd}
                   errors={errors.cccd}
                 />
+              </View>
+              <View style={{marginVertical: 5}}>
+                <Text style={{padding: 10, fontSize: 16, fontWeight: 600}}>
+                  Ngày sinh
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: '#ccc',
+                    padding: 12,
+                    borderRadius: 6,
+                  }}>
+                  <Text>
+                    {values.dob
+                      ? moment(values.dob).format('DD/MM/YYYY')
+                      : 'Chọn ngày sinh'}
+                  </Text>
+                </TouchableOpacity>
+
+                {errors.dob && (
+                  <Text style={{color: 'red', marginTop: 5}}>{errors.dob}</Text>
+                )}
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={values.dob ? new Date(values.dob) : new Date()}
+                    mode="date"
+                    display="spinner"
+                    onChange={(event, selectedDate) => {
+                      setShowDatePicker(false);
+                      if (selectedDate) {
+                        setFieldValue('dob', selectedDate.toISOString());
+                      }
+                    }}
+                  />
+                )}
               </View>
 
               <View style={{marginVertical: 5}}>

@@ -74,8 +74,10 @@ const ListIdentity = () => {
           return {
             title: user.common_name,
             id: user.id,
+            dob: user.dob,
           };
         });
+        console.log('check data>>>>', data);
         setListUser(data);
       }
     };
@@ -123,6 +125,8 @@ const ListIdentity = () => {
                   onPress={() =>
                     navigation.navigate('ListCertificationPersonal', {
                       id: item.id,
+                      dob: item.dob,
+                      commonName: item.title,
                     })
                   }
                   style={{position: 'absolute', top: 35, right: 50}}>

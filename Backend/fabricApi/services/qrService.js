@@ -3,7 +3,7 @@ const secret_key = "4f3d2a8f9e8b3c1d5e6f7a9b0c2d4e8f3a6b9c0d1e2f4a5b7c8d9e0f1a2b
 const qrCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
-
+const QRCode = require("qrcode");
 // Hàm tạo QR code
 exports.Generate_Qr = async () => {
     try {
@@ -42,3 +42,15 @@ exports.verify_qr = async({ data }) => {
         return { message: error.message || "Token verification failed" };
     }
 }
+
+
+exports.generateQRCode = async (degreeData) => {
+  try {
+    const qrData = JSON.stringify(degreeData);
+    return await QRCode.toDataURL(qrData);
+  } catch (error) {
+    throw new Error("Không thể tạo mã QR");
+  }
+};
+
+

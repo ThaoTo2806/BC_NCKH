@@ -1,28 +1,19 @@
 import axios from '../utils/axios.customize';
+import axiosInstance from './axios.customize'; 
 
 
-export const registerAPI = (username: string,
-  email: string,
-  citizen_id: string,
-  common_name: string,
-  organization: string,
-  organizational_unit: string,
-  country: string,
-  state: string,
-  locality: string,
-  role: string
-) => {
+export const registerAPI = (username: string, email: string, citizen_id: string, common_name: string, organization: string, organizational_unit: string, country: string, state: string, locality: string, role: string, dob: string) => {
   const url = `/api/v1/auth/register`
-  return axios.post(url, { username, email, citizen_id, common_name, organization, organizational_unit, country, state, locality, role })
+  return axios.post(url, { username, email, citizen_id, common_name, organization, organizational_unit, country, state, locality, role,dob })
 }
 export const fetchQRData = () => {
-  const url ="/api/v1/QR/generate-qr";
+  const url = "/api/v1/QR/generate-qr";
 
   return axios.get(url);
 }
-export const fetchDegree = (status: string , date?: string) => {
-  const url = `/api/v1/degrees?status=${status}`;
-  if(date){
+export const fetchDegree = (status: string, date?: string) => {
+  let url = `/api/v1/degrees?status=${status}`;
+  if (date) {
     url += `&date=${date}`;
   }
   return axios.get(url);
@@ -38,7 +29,7 @@ export const UpdateDegree = (status: String, id: number) => {
 }
 export const loginAPI = (username: string, password: string) => {
 
-  const url = `http://blockchain.onlineai.vn:3001/api/v1/auth/login`;
+  const url = `/api/v1/auth/login`;
   return axios.post(url, { username: username, password })
 }
 
@@ -55,7 +46,6 @@ export const getUserById = (id: string) => {
 
 
 export const resetPassword = (common_name: string, username: string, citizen_id: string) => {
-
   const url = `/api/v1/users/reset-password`;
   return axios.post(url, { common_name, username, citizen_id });
 
@@ -72,12 +62,12 @@ export const getAllDegreesNoStatus = () => {
 }
 
 export const getDegreeByUserId = (id: string) => {
-  const url = `http://blockchain.onlineai.vn:3001/api/v1/users/degrees/${id}`;
+  const url = `/api/v1/users/degrees/${id}`;
   return axios.get(url);
 }
 
 export const getDegreeById = (id: string) => {
-  const url = `http://blockchain.onlineai.vn:3001/api/v1/degrees/${id}`;
+  const url = `/api/v1/degrees/${id}`;
   return axios.get(url);
 }
 
@@ -116,7 +106,7 @@ export const createPinAPI = async (username: string, pin: string) => {
 };
 
 export const getPinAPI = async (username: string) => {
-  const url = `http://blockchain.onlineai.vn:3001/api/v1/users/get-pin?username=${encodeURIComponent(username)}`;
+  const url = `/api/v1/users/get-pin?username=${encodeURIComponent(username)}`;
 
   try {
     const response = await axios.get(url);
@@ -127,19 +117,22 @@ export const getPinAPI = async (username: string) => {
   }
 };
 
-export const addDegree = (formData: FormData) => {
-  return axios({
-    method: 'post',
-    url: '/api/v1/degrees',
-    data: formData,
+export const addDegree = async (formData: FormData) => {
+  // return await axios.post('http://192.168.1.18:3001/api/v1/degrees', formData, {
+  //   headers: {
+  //     'Content-Type': 'multipart/form-data',
+  //   },
+  // });
+  return await axios.post('/api/v1/degrees', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   });
 };
 
+
 export const getTime = async () => {
-  const url = `http://blockchain.onlineai.vn:3001/api/v1/time/getTime`;
+  const url = `/api/v1/time/getTime`;
   return axios.get(url);
 }
 
@@ -147,4 +140,31 @@ export const getTime = async () => {
 export const updateQueryTime = async (id: string) => {
   const url = `/degrees/updateTimeQuery/${id}`;
   return axios.patch(url);
+}
+
+export const generateDegreeQRCode = async (degreeId: string) => {
+  try {
+    const url = `/api/v1/degrees/${degreeId}/qrcode`; // Đường dẫn API theo yêu cầu
+    const response = await axios.get(url);
+    return response.qrCode; // Giả sử API trả về qrCode
+
+  } catch (error) {
+    console.error("Lỗi khi tạo mã QR:", error);
+    throw error; // Ném lỗi để có thể xử lý ở nơi gọi hàm
+  }
+};
+
+
+export const getDegressBatch = async () => {
+  const url = `/api/v1/degrees/batch/pending`;
+  return axios.get(url);
+}
+
+export const approveBatch = async (data: String[]) => {
+  const url = `/api/v1/degrees/batch/approve`;
+  return axios.post(url, { degreeIds: data });
+}
+export const getInfor = async () => {
+  const url = `/api/v1/test/degree-info`;
+  return axios.get(url);
 }

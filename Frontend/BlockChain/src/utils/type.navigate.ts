@@ -24,6 +24,7 @@ export type RootStackParamList = {
     major_name: string;
     status: string;
     gpa : Double;
+    xeploai: string;
   };
   ApproveHistory: undefined;
   Identity: undefined;
@@ -65,6 +66,8 @@ export type RootStackParamList = {
   RegisterForm1: undefined;
   ListCertificationPersonal: {
     id: string;
+    dob: string;
+    commonName: string;
   };
   AddDegree: {
     id: string;
@@ -74,9 +77,13 @@ export type RootStackParamList = {
     graduation_year: string;
     gpa: string;
     hash_qrcode: string;
+    imageFrontUri?: string;
+    imageFrontName?: string;
   };
   AddDegree1: {
     id: string;
+    dob: string;
+    commonName: string;
   };
   CreatePinScreen: { username: string; commonName: string };
   QRSCan: undefined;

@@ -44,6 +44,7 @@ CREATE TABLE degrees (
     blockchain_hash BINARY(32) UNIQUE,
     verification_code VARCHAR(20) UNIQUE,
     status ENUM('valid', 'revoked', 'pending') NOT NULL DEFAULT 'pending',
+    batch_approval BOOLEAN DEFAULT FALSE,
     issued_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -74,4 +75,37 @@ CREATE TABLE tokens (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE qr_codes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    degree_id VARCHAR(255) NOT NULL,
+    token VARCHAR(512) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    used BOOLEAN DEFAULT FALSE
+);
+
+
+-- Bảng theo dõi chi tiết tiến trình xử lý từng bằng trong lô
+CREATE TABLE batch_process_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    degree_id INT NOT NULL,
+    status ENUM('success', 'failed', 'pending') NOT NULL,
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (degree_id) REFERENCES degrees(id) ON DELETE CASCADE
+);
+
+-- Bảng tổng kết kết quả xử lý lô
+CREATE TABLE batch_process_summary (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    total INT NOT NULL,
+    success_count INT NOT NULL DEFAULT 0,
+    failed_count INT NOT NULL DEFAULT 0,
+    approver_id INT NOT NULL,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL,
+    
+    FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE CASCADE
 );

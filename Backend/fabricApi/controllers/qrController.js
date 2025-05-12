@@ -1,4 +1,6 @@
 const degreeService = require("../services/qrService");
+const qrService = require("../services/qrService");
+
 exports.qrGenerate =  async(req, res) =>{
     try {
         const data = await degreeService.Generate_Qr();
@@ -19,3 +21,7 @@ exports.verifyQR = async(req, res) =>{
         return res.status(500).json({message : error})
     }
 }
+
+
+
+

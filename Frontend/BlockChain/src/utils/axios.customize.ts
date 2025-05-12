@@ -4,8 +4,8 @@ import axios from "axios";
 
 
 
-const backend = process.env.API_URL;
-
+const backend = "http://blockchain.onlineai.vn:3001";
+console.log("backend", backend);
 const instance = axios.create({
     baseURL: backend
 });

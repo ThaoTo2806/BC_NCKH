@@ -130,7 +130,7 @@ type NavigationProps = StackNavigationProp<
 
 const ListCertificationPersonal = () => {
   const route = useRoute();
-  const {id} = route.params;
+  const {id,dob,commonName} = route.params;
   const navigation = useNavigation<NavigationProps>();
 
   const [user, setUser] = useState({});
@@ -215,7 +215,7 @@ const ListCertificationPersonal = () => {
         {role === 'manager' && (
           <TouchableOpacity
             style={styles.resetButton}
-            onPress={() => navigation.navigate('AddDegree1', {id})}>
+            onPress={() => navigation.navigate('AddDegree1', {id,dob,commonName})}>
             <Text style={styles.backText}>Thêm bằng cấp</Text>
             <Image
               source={require('../../../assets/icon/arrow-right.png')}

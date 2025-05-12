@@ -22,6 +22,8 @@ export const RegisterSchema2 = Yup.object().shape({
   username: Yup.string().required('Username không được để trống'),
   cccd: Yup.string().required('cccd không được để trống'),
   email: Yup.string().required('email Unit tên không được để trống'),
+  dob: Yup.string().required('Vui lòng nhập ngày sinh'),
+
 });
 export const pinSchema = Yup.object().shape({
   pin: Yup.string()
@@ -35,4 +37,5 @@ export const AddDegree1Schema = Yup.object().shape({
   degree_type: Yup.string().required('Loại bằng tên không được để trống'),
   graduation_year: Yup.string().required('Năm tốt nghiệp không được để trống'),
   gpa: Yup.string().required('GPA không được để trống'),
+  xeploai: Yup.string().required('Xếp loại không được để trống'),
 });

@@ -2,11 +2,18 @@ const { create } = require("ipfs-http-client");
 const crypto = require("crypto");
 require("dotenv").config();
 
+// const ipfs = create({
+//     host: '127.0.0.1',
+//     port: '7054',
+//     protocol: "http",
+// });
+
 const ipfs = create({
-    host: "127.0.0.1",
-    port: 5001,
-    protocol: "http",
-});
+    host: 'blockchain.onlineai.vn',
+    port: '5001',
+    protocol: 'http',
+  });
+  
 
 const AES_KEY = Buffer.from(process.env.AES_KEY, "hex");
 const AES_IV = Buffer.from(process.env.AES_IV, "hex");
@@ -40,7 +47,7 @@ async function uploadToIPFS(fileBuffer) {
         return { cid: cid.toString(), iv: iv.toString("hex") };
     } catch (error) {
         console.error("Lỗi khi upload IPFS:", error);
-            throw new Error("Không thể upload lên IPFS");
+        throw new Error("Không thể upload lên IPFS");
     }
 }
 
